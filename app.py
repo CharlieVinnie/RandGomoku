@@ -1,24 +1,51 @@
 import sys
-from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton
-from PyQt6.QtCore import QSize
 
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QComboBox,
+    QDial,
+    QDoubleSpinBox,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QMainWindow,
+    QSlider,
+    QSpinBox,
+)
+from PyQt6.QtGui import QPixmap
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
         self.setWindowTitle("My App")
-        
-        button = QPushButton("Press me!")
 
-        self.setFixedSize(QSize(400, 300))
+        widget = QDial()
+        widget.setRange(-10, 100)
+        widget.setSingleStep(1)
 
-        self.setCentralWidget(button)
+        widget.valueChanged.connect(self.value_changed)
+        widget.sliderMoved.connect(self.slider_position)
+        widget.sliderPressed.connect(self.slider_pressed)
+        widget.sliderReleased.connect(self.slider_released)
 
+        self.setCentralWidget(widget)
+
+    def value_changed(self, i):
+        print(i)
+
+    def slider_position(self, p):
+        print("position", p)
+
+    def slider_pressed(self):
+        print("Pressed!")
+
+    def slider_released(self):
+        print("Released")
 
 app = QApplication(sys.argv)
-
-window = MainWindow()
-window.show()
-
+w = MainWindow()
+w.show()
 app.exec()
