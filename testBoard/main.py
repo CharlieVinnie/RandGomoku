@@ -1,7 +1,7 @@
 import sys
 from PyQt6 import QtWidgets, QtGui, QtCore
 from PyQt6.QtWidgets import QGraphicsLineItem, QGraphicsRectItem, QGraphicsScene, QGraphicsView, QGraphicsEllipseItem
-from PyQt6.QtCore import QRectF, QRect
+from PyQt6.QtCore import QRectF, QRect, pyqtSignal, QObject
 from PyQt6.QtGui import QColor
 from enum import Enum
 
@@ -18,33 +18,80 @@ def otherColor(color: Color):
         return Color.BLACK
 
 class DuplicatePositionError(Exception): pass
+class GameAlreadyEndedError(Exception): pass
 
 class GameManager():
+    SIZE = 15
+
     def __init__(self):
         self.history: list[tuple[int,int,Color]] = []
         self.current_color = Color.BLACK
+        self.board: list[list[None|Color]] = [[None]*self.SIZE for _ in range(self.SIZE)]
+        self.winner: None|Color = None
     
     def play(self, x:int, y:int):
-        for x0,y0,_ in self.history:
-            if x == x0 and y == y0:
-                raise DuplicatePositionError
+        if self.winner:
+            raise GameAlreadyEndedError
 
+        if x < 0 or x >= self.SIZE or y < 0 or y >= self.SIZE:
+            raise IndexError
+
+        if self.board[x][y]:
+            raise DuplicatePositionError
+        
+        self.board[x][y] = self.current_color
         self.history.append((x,y,self.current_color))
+
+        self.checkForWin()
+
         color = self.current_color
         self.current_color = otherColor(color)
+
         return color
+
+    def checkForWin(self):
+        # check for win as the gomoku rule
+        for i in range(self.SIZE):
+            for j in range(self.SIZE):
+                if self.board[i][j] == self.current_color:
+                    # check horizontal
+                    if j < self.SIZE - 4:
+                        if self.board[i][j+1] == self.current_color and self.board[i][j+2] == self.current_color and self.board[i][j+3] == self.current_color and self.board[i][j+4] == self.current_color:
+                            self.winner = self.current_color
+                            return
+                    # check vertical
+                    if i < self.SIZE - 4:
+                        if self.board[i+1][j] == self.current_color and self.board[i+2][j] == self.current_color and self.board[i+3][j] == self.current_color and self.board[i+4][j] == self.current_color:
+                            self.winner = self.current_color
+                            return
+                    # check diagonal
+                    if i < self.SIZE - 4 and j < self.SIZE - 4:
+                        if self.board[i+1][j+1] == self.current_color and self.board[i+2][j+2] == self.current_color and self.board[i+3][j+3] == self.current_color and self.board[i+4][j+4] == self.current_color:
+                            self.winner = self.current_color
+                            return
+                    # check anti-diagonal
+                    if i > 3 and j < self.SIZE - 4:
+                        if self.board[i-1][j+1] == self.current_color and self.board[i-2][j+2] == self.current_color and self.board[i-3][j+3] == self.current_color and self.board[i-4][j+4] == self.current_color:
+                            self.winner = self.current_color
+                            return
 
     def clear(self):
         self.history = []
         self.current_color = Color.BLACK
+        self.board = [[None]*self.SIZE for _ in range(self.SIZE)]
+        self.winner = None
 
 
-class BoardManager():
+class BoardManager(QObject):
+
+    game_ended_signal = pyqtSignal(Color)
 
     BOARDSIZE = 15
     LEN = 30
 
     def __init__(self, view: QGraphicsView):
+        super().__init__()
+
         self.view = view
         self.scene = QGraphicsScene(self.view)
         self.view.setScene(self.scene)
@@ -52,7 +99,7 @@ class BoardManager():
         self.scene.setSceneRect(0, 0, self.BOARDSIZE*(self.LEN+1), self.BOARDSIZE*(self.LEN+1))
         self.drawBoardLines()
 
-        self.pieceItemList: list[QGraphicsEllipseItem] = []
+        self.piece_items: list[QGraphicsEllipseItem] = []
 
         self.game = GameManager()
         self.activated = False
@@ -89,13 +136,13 @@ class BoardManager():
             circle.setPen(QtGui.QPen(QtGui.QColor(255,255,255), 1))
             circle.setBrush(QtGui.QBrush(QtGui.QColor(255,255,255)))
             
-        self.pieceItemList.append(circle)
+        self.piece_items.append(circle)
         return circle
 
     def clear(self):
-        for item in self.pieceItemList:
+        for item in self.piece_items:
             self.scene.removeItem(item)
-        self.pieceItemList = []
+        self.piece_items = []
         self.game.clear()
 
     def chess_board_mousePress(self, event: QtGui.QMouseEvent):
@@ -108,6 +155,10 @@ class BoardManager():
 
         try:
             self.scene.addItem(self.createPieceItem(x,y,self.game.play(x,y)))
+            if self.game.winner:
+                self.disactivate()
+                self.game_ended_signal.emit(self.game.winner)
+
         except DuplicatePositionError:
             pass
 
@@ -125,7 +176,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.start_button.clicked.connect(lambda: self.board_manager.clear())
 
         self.resign_button.clicked.connect(self.board_manager.disactivate)
-        self.resign_button.clicked.connect(lambda: self.game_status.setText("Game ended!"))
+
+        self.board_manager.game_ended_signal.connect(
+            lambda winner: self.game_status.setText(f"Game ended. Winner: {"Black" if winner == Color.BLACK else "White"}"))
 
 
 app = QtWidgets.QApplication(sys.argv)
