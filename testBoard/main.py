@@ -1,11 +1,12 @@
 import sys
 from PyQt6 import QtWidgets, QtGui, QtCore
-from PyQt6.QtWidgets import QGraphicsLineItem, QGraphicsRectItem, QGraphicsScene, QGraphicsView, QGraphicsEllipseItem
+from PyQt6.QtWidgets import QGraphicsLineItem, QGraphicsRectItem, QGraphicsScene, QGraphicsView, QGraphicsEllipseItem, QDialog
 from PyQt6.QtCore import QRectF, QRect, pyqtSignal, QObject
 from PyQt6.QtGui import QColor
 from enum import Enum
 
 from MainWindow import Ui_MainWindow
+from Dialog import Ui_Dialog
 
 class Color(Enum):
     BLACK = 0
@@ -163,6 +164,12 @@ class BoardManager(QObject):
             pass
 
 
+
+class StartDialog(QtWidgets.QDialog, Ui_Dialog):
+    def __init__(self):
+        super().__init__()
+        self.setupUi(self)
+
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def __init__(self, *args, obj=None, **kwargs):
@@ -174,6 +181,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.start_button.clicked.connect(self.board_manager.activate)
         self.start_button.clicked.connect(lambda: self.game_status.setText("Game ongoing..."))
         self.start_button.clicked.connect(lambda: self.board_manager.clear())
+        
+        def qwq():
+            dialog = StartDialog()
+            dialog.exec()
+
+        self.start_button.clicked.connect(qwq)
 
         self.resign_button.clicked.connect(self.board_manager.disactivate)
 
