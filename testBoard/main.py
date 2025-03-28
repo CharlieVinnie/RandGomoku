@@ -1,6 +1,6 @@
 import sys
 from PyQt6 import QtWidgets, QtGui, QtCore
-from PyQt6.QtWidgets import QGraphicsLineItem, QGraphicsRectItem, QGraphicsScene, QGraphicsView
+from PyQt6.QtWidgets import QGraphicsLineItem, QGraphicsRectItem, QGraphicsScene, QGraphicsView, QGraphicsEllipseItem
 from PyQt6.QtCore import QRectF, QRect
 from PyQt6.QtGui import QColor
 from enum import Enum
@@ -34,6 +34,10 @@ class GameManager():
         self.current_color = otherColor(color)
         return color
 
+    def clear(self):
+        self.history = []
+        self.current_color = Color.BLACK
+
 
 class BoardManager():
 
@@ -47,6 +51,8 @@ class BoardManager():
 
         self.scene.setSceneRect(0, 0, self.BOARDSIZE*(self.LEN+1), self.BOARDSIZE*(self.LEN+1))
         self.drawBoardLines()
+
+        self.pieceItemList: list[QGraphicsEllipseItem] = []
 
         self.game = GameManager()
         self.activated = False
@@ -82,7 +88,15 @@ class BoardManager():
         else:
             circle.setPen(QtGui.QPen(QtGui.QColor(255,255,255), 1))
             circle.setBrush(QtGui.QBrush(QtGui.QColor(255,255,255)))
+            
+        self.pieceItemList.append(circle)
         return circle
+
+    def clear(self):
+        for item in self.pieceItemList:
+            self.scene.removeItem(item)
+        self.pieceItemList = []
+        self.game.clear()
 
     def chess_board_mousePress(self, event: QtGui.QMouseEvent):
         if not self.activated:
@@ -105,7 +119,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.setupUi(self)
 
         self.board_manager = BoardManager(self.chess_board)
-        self.board_manager.activate()
+        
+        self.start_button.clicked.connect(self.board_manager.activate)
+        self.start_button.clicked.connect(lambda: self.game_status.setText("Game ongoing..."))
+        self.start_button.clicked.connect(lambda: self.board_manager.clear())
+
+        self.resign_button.clicked.connect(self.board_manager.disactivate)
+        self.resign_button.clicked.connect(lambda: self.game_status.setText("Game ended!"))
 
 
 app = QtWidgets.QApplication(sys.argv)
