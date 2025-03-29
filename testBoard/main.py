@@ -99,6 +99,7 @@ class GameManager():
 class BoardManager(QObject):
 
     game_ended_signal = pyqtSignal(Color)
+    turn_changed_signal = pyqtSignal(Color)
 
     BOARDSIZE = 15
     LEN = 30
@@ -119,7 +120,16 @@ class BoardManager(QObject):
         self.game = GameManager()
         self.activated = False
 
+        self.showing_real = False
+
         self.view.mousePressEvent = self.chess_board_mousePress
+
+    def clear(self):
+        self.scene.removeItem(self.piece_items)
+        self.game.clear()
+        self.piece_items = QGraphicsItemGroup()
+        self.scene.addItem(self.piece_items)
+        self.showing_real = False
 
     def drawBoardLines(self):
         for i in range(self.BOARDSIZE):
@@ -153,17 +163,11 @@ class BoardManager(QObject):
         
         return typing.cast(QGraphicsItem, circle)
 
-    def clear(self):
-        self.scene.removeItem(self.piece_items)
-        self.game.clear()
-        self.piece_items = QGraphicsItemGroup()
-        self.scene.addItem(self.piece_items)
-
-    def refresh_piece_items(self, showReal: bool = False ):
+    def refresh_piece_items(self):
         self.scene.removeItem(self.piece_items)
         self.piece_items = QGraphicsItemGroup()
 
-        history = self.game.getRealHistory() if showReal else self.game.getFakeHistory()
+        history = self.game.getRealHistory() if self.showing_real else self.game.getFakeHistory()
         for x,y,color in history:
             self.piece_items.addToGroup(self.createPieceItem(x,y,color))
 
@@ -180,6 +184,7 @@ class BoardManager(QObject):
         try:
             self.game.play(x,y)
             self.refresh_piece_items()
+            self.turn_changed_signal.emit(self.game.current_color)
 
             if self.game.winner:
                 self.disactivate()
@@ -188,14 +193,14 @@ class BoardManager(QObject):
         except DuplicatePositionError:
             pass
 
-
-
 class StartDialog(QtWidgets.QDialog, Ui_Dialog):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
+
+    TURN_CIRCLE_SIZE = 50
 
     def __init__(self, *args, obj=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -210,6 +215,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.start_button.clicked.connect(lambda: self.board_manager.clear())
         self.start_button.clicked.connect(lambda: self.resign_button.setEnabled(True))
         self.start_button.clicked.connect(lambda: self.start_button.setDisabled(True))
+        self.start_button.clicked.connect(lambda: self.board_manager.turn_changed_signal.emit(self.board_manager.game.current_color))
         
         self.resign_button.clicked.connect(self.board_manager.disactivate)
         self.resign_button.clicked.connect(lambda: self.resign_button.setDisabled(True))
@@ -221,6 +227,25 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         
         self.board_manager.game_ended_signal.connect(lambda: self.start_button.setEnabled(True))
         self.board_manager.game_ended_signal.connect(lambda: self.resign_button.setDisabled(True))
+
+        def showRealOnCheckBoxChange():
+            self.board_manager.showing_real = self.show_real_checkbox.isChecked()
+            self.board_manager.refresh_piece_items()
+        self.show_real_checkbox.stateChanged.connect(showRealOnCheckBoxChange)
+
+        self.board_manager.turn_changed_signal.connect(lambda color: self.setTurnView(color))
+    
+    def setTurnView(self, color: Color):
+        if color == Color.BLACK:
+            circle = QtWidgets.QGraphicsEllipseItem(0, 0, self.TURN_CIRCLE_SIZE, self.TURN_CIRCLE_SIZE)  # Example coordinates and size
+            circle.setBrush(QtGui.QBrush(QtGui.QColor(0, 0, 0)))  # Set the color to black
+            self.turnView.setScene(QtWidgets.QGraphicsScene())  # Ensure the scene is initialized
+            self.turnView.scene().addItem(circle)
+        else:
+            circle = QtWidgets.QGraphicsEllipseItem(0, 0, self.TURN_CIRCLE_SIZE, self.TURN_CIRCLE_SIZE)  # Example coordinates and size
+            circle.setBrush(QtGui.QBrush(QtGui.QColor(255, 255, 255)))  # Set the color to white
+            self.turnView.setScene(QtWidgets.QGraphicsScene())  # Ensure the scene is initialized
+            self.turnView.scene().addItem(circle)
 
 
 app = QtWidgets.QApplication(sys.argv)
