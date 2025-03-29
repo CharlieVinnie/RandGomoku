@@ -177,21 +177,28 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.setupUi(self)
 
         self.board_manager = BoardManager(self.chess_board)
+
+        self.resign_button.setDisabled(True)
         
         self.start_button.clicked.connect(self.board_manager.activate)
         self.start_button.clicked.connect(lambda: self.game_status.setText("Game ongoing..."))
         self.start_button.clicked.connect(lambda: self.board_manager.clear())
+        self.start_button.clicked.connect(lambda: self.resign_button.setEnabled(True))
+        self.start_button.clicked.connect(lambda: self.start_button.setDisabled(True))
         
-        def qwq():
-            dialog = StartDialog()
-            dialog.exec()
-
-        self.start_button.clicked.connect(qwq)
-
         self.resign_button.clicked.connect(self.board_manager.disactivate)
+        self.resign_button.clicked.connect(lambda: self.resign_button.setDisabled(True))
+        self.resign_button.clicked.connect(lambda: self.start_button.setEnabled(True))
+        self.resign_button.clicked.connect(lambda: self.game_status.setText("Game ended. Resigned."))
 
         self.board_manager.game_ended_signal.connect(
             lambda winner: self.game_status.setText(f"Game ended. Winner: {"Black" if winner == Color.BLACK else "White"}"))
+
+        self.board_manager.game_ended_signal.connect(
+            lambda winner: self.start_button.setEnabled(True))
+        
+        self.board_manager.game_ended_signal.connect(
+            lambda winner: self.resign_button.setDisabled(True))
 
 
 app = QtWidgets.QApplication(sys.argv)
