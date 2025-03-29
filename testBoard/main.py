@@ -1,9 +1,13 @@
 import sys
 from PyQt6 import QtWidgets, QtGui, QtCore
-from PyQt6.QtWidgets import QGraphicsLineItem, QGraphicsRectItem, QGraphicsScene, QGraphicsView, QGraphicsEllipseItem, QDialog
+from PyQt6.QtWidgets import(
+    QGraphicsLineItem, QGraphicsRectItem, QGraphicsScene, QGraphicsView, QGraphicsEllipseItem, QDialog,
+    QGraphicsItem, QGraphicsItemGroup
+)
 from PyQt6.QtCore import QRectF, QRect, pyqtSignal, QObject
 from PyQt6.QtGui import QColor
 from enum import Enum
+import typing
 
 from MainWindow import Ui_MainWindow
 from Dialog import Ui_Dialog
@@ -27,7 +31,8 @@ class GameManager():
     def __init__(self):
         self.history: list[tuple[int,int,Color]] = []
         self.current_color = Color.BLACK
-        self.board: list[list[None|Color]] = [[None]*self.SIZE for _ in range(self.SIZE)]
+        self.fake_board: list[list[None|Color]] = [[None]*self.SIZE for _ in range(self.SIZE)]
+        self.real_board: list[list[None|Color]] = [[None]*self.SIZE for _ in range(self.SIZE)]
         self.winner: None|Color = None
     
     def play(self, x:int, y:int):
@@ -37,49 +42,51 @@ class GameManager():
         if x < 0 or x >= self.SIZE or y < 0 or y >= self.SIZE:
             raise IndexError
 
-        if self.board[x][y]:
+        if self.real_board[x][y]:
             raise DuplicatePositionError
         
-        self.board[x][y] = self.current_color
+        self.fake_board[x][y] = otherColor(self.current_color)
+        self.real_board[x][y] = self.current_color
         self.history.append((x,y,self.current_color))
 
         self.checkForWin()
 
-        color = self.current_color
-        self.current_color = otherColor(color)
-
-        return color
+        if self.winner:
+            return
+        
+        self.current_color = otherColor(self.current_color)
 
     def checkForWin(self):
         # check for win as the gomoku rule
         for i in range(self.SIZE):
             for j in range(self.SIZE):
-                if self.board[i][j] == self.current_color:
+                if self.real_board[i][j] == self.current_color:
                     # check horizontal
                     if j < self.SIZE - 4:
-                        if self.board[i][j+1] == self.current_color and self.board[i][j+2] == self.current_color and self.board[i][j+3] == self.current_color and self.board[i][j+4] == self.current_color:
+                        if self.real_board[i][j+1] == self.current_color and self.real_board[i][j+2] == self.current_color and self.real_board[i][j+3] == self.current_color and self.real_board[i][j+4] == self.current_color:
                             self.winner = self.current_color
                             return
                     # check vertical
                     if i < self.SIZE - 4:
-                        if self.board[i+1][j] == self.current_color and self.board[i+2][j] == self.current_color and self.board[i+3][j] == self.current_color and self.board[i+4][j] == self.current_color:
+                        if self.real_board[i+1][j] == self.current_color and self.real_board[i+2][j] == self.current_color and self.real_board[i+3][j] == self.current_color and self.real_board[i+4][j] == self.current_color:
                             self.winner = self.current_color
                             return
                     # check diagonal
                     if i < self.SIZE - 4 and j < self.SIZE - 4:
-                        if self.board[i+1][j+1] == self.current_color and self.board[i+2][j+2] == self.current_color and self.board[i+3][j+3] == self.current_color and self.board[i+4][j+4] == self.current_color:
+                        if self.real_board[i+1][j+1] == self.current_color and self.real_board[i+2][j+2] == self.current_color and self.real_board[i+3][j+3] == self.current_color and self.real_board[i+4][j+4] == self.current_color:
                             self.winner = self.current_color
                             return
                     # check anti-diagonal
                     if i > 3 and j < self.SIZE - 4:
-                        if self.board[i-1][j+1] == self.current_color and self.board[i-2][j+2] == self.current_color and self.board[i-3][j+3] == self.current_color and self.board[i-4][j+4] == self.current_color:
+                        if self.real_board[i-1][j+1] == self.current_color and self.real_board[i-2][j+2] == self.current_color and self.real_board[i-3][j+3] == self.current_color and self.real_board[i-4][j+4] == self.current_color:
                             self.winner = self.current_color
                             return
 
     def clear(self):
         self.history = []
         self.current_color = Color.BLACK
-        self.board = [[None]*self.SIZE for _ in range(self.SIZE)]
+        self.fake_board = [[None]*self.SIZE for _ in range(self.SIZE)]
+        self.real_board = [[None]*self.SIZE for _ in range(self.SIZE)]
         self.winner = None
 
 
@@ -100,7 +107,8 @@ class BoardManager(QObject):
         self.scene.setSceneRect(0, 0, self.BOARDSIZE*(self.LEN+1), self.BOARDSIZE*(self.LEN+1))
         self.drawBoardLines()
 
-        self.piece_items: list[QGraphicsEllipseItem] = []
+        self.piece_items = QGraphicsItemGroup()
+        self.scene.addItem(self.piece_items)
 
         self.game = GameManager()
         self.activated = False
@@ -136,15 +144,18 @@ class BoardManager(QObject):
         else:
             circle.setPen(QtGui.QPen(QtGui.QColor(255,255,255), 1))
             circle.setBrush(QtGui.QBrush(QtGui.QColor(255,255,255)))
-            
-        self.piece_items.append(circle)
-        return circle
+        
+        return typing.cast(QGraphicsItem, circle)
 
     def clear(self):
-        for item in self.piece_items:
-            self.scene.removeItem(item)
-        self.piece_items = []
+        # self.scene.removeItem(self.piece_items)
         self.game.clear()
+        self.piece_items = QGraphicsItemGroup()
+        # self.scene.addItem(self.piece_items)
+
+    def refresh_piece_items(self):
+        for x,y,color in self.game.fake_board:
+            self.piece_items.addToGroup(self.createPieceItem(x,y,color))
 
     def chess_board_mousePress(self, event: QtGui.QMouseEvent):
         if not self.activated:
@@ -155,7 +166,9 @@ class BoardManager(QObject):
             return
 
         try:
-            self.scene.addItem(self.createPieceItem(x,y,self.game.play(x,y)))
+            self.game.play(x,y)
+            self.refresh_piece_items()
+
             if self.game.winner:
                 self.disactivate()
                 self.game_ended_signal.emit(self.game.winner)
@@ -193,12 +206,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.board_manager.game_ended_signal.connect(
             lambda winner: self.game_status.setText(f"Game ended. Winner: {"Black" if winner == Color.BLACK else "White"}"))
-
-        self.board_manager.game_ended_signal.connect(
-            lambda winner: self.start_button.setEnabled(True))
         
-        self.board_manager.game_ended_signal.connect(
-            lambda winner: self.resign_button.setDisabled(True))
+        self.board_manager.game_ended_signal.connect(lambda: self.start_button.setEnabled(True))
+        self.board_manager.game_ended_signal.connect(lambda: self.resign_button.setDisabled(True))
 
 
 app = QtWidgets.QApplication(sys.argv)
