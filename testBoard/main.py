@@ -29,11 +29,10 @@ class GameManager():
     SIZE = 15
 
     def __init__(self):
-        self.fake_history: list[tuple[int,int,Color]] = []
-        self.real_history: list[tuple[int,int,Color]] = []
+        self.history: list[tuple[int,int,Color,Color]] = []
         self.current_color = Color.BLACK
-        self.fake_board: list[list[None|Color]] = [[None]*self.SIZE for _ in range(self.SIZE)]
         self.real_board: list[list[None|Color]] = [[None]*self.SIZE for _ in range(self.SIZE)]
+        self.fake_board: list[list[None|Color]] = [[None]*self.SIZE for _ in range(self.SIZE)]
         self.winner: None|Color = None
     
     def play(self, x:int, y:int):
@@ -46,14 +45,13 @@ class GameManager():
         if self.real_board[x][y]:
             raise DuplicatePositionError
         
-        self.fake_board[x][y] = otherColor(self.current_color)
-        self.real_board[x][y] = self.current_color
-        self.fake_history.append((x,y,self.current_color))
-        self.real_history.append((x,y,otherColor(self.current_color)))
+        real_color = self.current_color
+        fake_color = otherColor(real_color)
+        self.real_board[x][y] = real_color
+        self.fake_board[x][y] = fake_color
+        self.history.append( (x, y, real_color, fake_color) )
 
-        self.checkForWin()
-
-        if self.winner:
+        if self.checkForWin():
             return
         
         self.current_color = otherColor(self.current_color)
@@ -67,32 +65,36 @@ class GameManager():
                     if j < self.SIZE - 4:
                         if self.real_board[i][j+1] == self.current_color and self.real_board[i][j+2] == self.current_color and self.real_board[i][j+3] == self.current_color and self.real_board[i][j+4] == self.current_color:
                             self.winner = self.current_color
-                            return
+                            return True
                     # check vertical
                     if i < self.SIZE - 4:
                         if self.real_board[i+1][j] == self.current_color and self.real_board[i+2][j] == self.current_color and self.real_board[i+3][j] == self.current_color and self.real_board[i+4][j] == self.current_color:
                             self.winner = self.current_color
-                            return
+                            return True
                     # check diagonal
                     if i < self.SIZE - 4 and j < self.SIZE - 4:
                         if self.real_board[i+1][j+1] == self.current_color and self.real_board[i+2][j+2] == self.current_color and self.real_board[i+3][j+3] == self.current_color and self.real_board[i+4][j+4] == self.current_color:
                             self.winner = self.current_color
-                            return
+                            return True
                     # check anti-diagonal
                     if i > 3 and j < self.SIZE - 4:
                         if self.real_board[i-1][j+1] == self.current_color and self.real_board[i-2][j+2] == self.current_color and self.real_board[i-3][j+3] == self.current_color and self.real_board[i-4][j+4] == self.current_color:
                             self.winner = self.current_color
-                            return
+                            return True
+        return False
 
     def clear(self):
-        self.fake_history = []
-        self.real_history = []
+        self.history = []
         self.current_color = Color.BLACK
         self.fake_board = [[None]*self.SIZE for _ in range(self.SIZE)]
         self.real_board = [[None]*self.SIZE for _ in range(self.SIZE)]
         self.winner = None
 
-
+    def getFakeHistory(self):
+        return [(x,y,col) for x,y,_,col in self.history]
+    
+    def getRealHistory(self):
+        return [(x,y,col) for x,y,col,_ in self.history]
 
 class BoardManager(QObject):
 
@@ -152,14 +154,20 @@ class BoardManager(QObject):
         return typing.cast(QGraphicsItem, circle)
 
     def clear(self):
-        # self.scene.removeItem(self.piece_items)
+        self.scene.removeItem(self.piece_items)
         self.game.clear()
         self.piece_items = QGraphicsItemGroup()
-        # self.scene.addItem(self.piece_items)
+        self.scene.addItem(self.piece_items)
 
-    def refresh_piece_items(self):
-        for x,y,color in self.game.fake_history:
+    def refresh_piece_items(self, showReal: bool = False ):
+        self.scene.removeItem(self.piece_items)
+        self.piece_items = QGraphicsItemGroup()
+
+        history = self.game.getRealHistory() if showReal else self.game.getFakeHistory()
+        for x,y,color in history:
             self.piece_items.addToGroup(self.createPieceItem(x,y,color))
+
+        self.scene.addItem(self.piece_items)
 
     def chess_board_mousePress(self, event: QtGui.QMouseEvent):
         if not self.activated:
