@@ -8,6 +8,7 @@ from PyQt6.QtCore import QRectF, QRect, pyqtSignal, QObject
 from PyQt6.QtGui import QColor
 from enum import Enum
 import typing
+import random
 
 from MainWindow import Ui_MainWindow
 from Dialog import Ui_Dialog
@@ -34,6 +35,7 @@ class GameManager():
         self.real_board: list[list[None|Color]] = [[None]*self.SIZE for _ in range(self.SIZE)]
         self.fake_board: list[list[None|Color]] = [[None]*self.SIZE for _ in range(self.SIZE)]
         self.winner: None|Color = None
+        self.flip_prob = 0.2
     
     def play(self, x:int, y:int):
         if self.winner:
@@ -45,8 +47,12 @@ class GameManager():
         if self.real_board[x][y]:
             raise DuplicatePositionError
         
-        real_color = self.current_color
-        fake_color = otherColor(real_color)
+        fake_color = self.current_color
+        real_color = fake_color
+
+        if random.random() < self.flip_prob:
+            real_color = otherColor(real_color)
+
         self.real_board[x][y] = real_color
         self.fake_board[x][y] = fake_color
         self.history.append( (x, y, real_color, fake_color) )
@@ -154,6 +160,16 @@ class BoardManager(QObject):
             line2.setPen(QtGui.QPen(QtGui.QColor(0,0,0), 1))
             self.scene.addItem(line1)
             self.scene.addItem(line2)
+        
+        dot_radius = self.LEN/3
+
+        for x,y in [(7,7),(3,3),(11,11),(3,11),(11,3)]:
+            dot0 = QGraphicsEllipseItem(self.LEN/2-dot_radius/2+x*self.LEN, self.LEN/2-dot_radius/2+y*self.LEN, dot_radius, dot_radius)
+            dot0.setPen(QtGui.QPen(QtGui.QColor(0,0,0), 1))
+            dot0.setBrush(QtGui.QBrush(QtGui.QColor(0,0,0)))
+            self.scene.addItem(dot0)
+
+
 
     def activate(self):
         self.activated = True
