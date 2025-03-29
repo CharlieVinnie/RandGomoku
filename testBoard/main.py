@@ -82,6 +82,17 @@ class GameManager():
                             self.winner = self.current_color
                             return True
         return False
+    
+    def checkForFourInARow(self):
+        for i in range(self.SIZE):
+            for j in range(self.SIZE):
+                if self.real_board[i][j] is not None:
+                    color = self.real_board[i][j]
+                    directions = [(1,0), (0,1), (-1,0), (0,-1), (1,1), (-1,1), (1,-1), (-1,-1)]
+                    for dx, dy in directions:
+                        if i+4*dx >= 0 and j+4*dy >= 0 and i+4*dx < self.SIZE and j+4*dy < self.SIZE and self.real_board[i+dx][j+dy] == color and self.real_board[i+2*dx][j+2*dy] == color and self.real_board[i+3*dx][j+3*dy] == color and self.real_board[i+4*dx][j+4*dy] == None:
+                            return True
+        return False
 
     def clear(self):
         self.history = []
@@ -100,6 +111,7 @@ class BoardManager(QObject):
 
     game_ended_signal = pyqtSignal(Color)
     turn_changed_signal = pyqtSignal(Color)
+    four_in_a_row_signal = pyqtSignal(bool)
 
     BOARDSIZE = 15
     LEN = 30
@@ -124,12 +136,15 @@ class BoardManager(QObject):
 
         self.view.mousePressEvent = self.chess_board_mousePress
 
+        self.clear()
+
     def clear(self):
         self.scene.removeItem(self.piece_items)
         self.game.clear()
         self.piece_items = QGraphicsItemGroup()
         self.scene.addItem(self.piece_items)
         self.showing_real = False
+        self.four_in_a_row_signal.emit(False)
 
     def drawBoardLines(self):
         for i in range(self.BOARDSIZE):
@@ -186,9 +201,13 @@ class BoardManager(QObject):
             self.refresh_piece_items()
             self.turn_changed_signal.emit(self.game.current_color)
 
+            self.four_in_a_row_signal.emit(False)
+
             if self.game.winner:
                 self.disactivate()
                 self.game_ended_signal.emit(self.game.winner)
+            elif self.game.checkForFourInARow():
+                self.four_in_a_row_signal.emit(True)
 
         except DuplicatePositionError:
             pass
@@ -216,6 +235,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.start_button.clicked.connect(lambda: self.resign_button.setEnabled(True))
         self.start_button.clicked.connect(lambda: self.start_button.setDisabled(True))
         self.start_button.clicked.connect(lambda: self.board_manager.turn_changed_signal.emit(self.board_manager.game.current_color))
+        self.start_button.clicked.connect(lambda: self.toggle_real.setText("Show Real Game"))
         
         self.resign_button.clicked.connect(self.board_manager.disactivate)
         self.resign_button.clicked.connect(lambda: self.resign_button.setDisabled(True))
@@ -228,12 +248,26 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.board_manager.game_ended_signal.connect(lambda: self.start_button.setEnabled(True))
         self.board_manager.game_ended_signal.connect(lambda: self.resign_button.setDisabled(True))
 
-        def showRealOnCheckBoxChange():
-            self.board_manager.showing_real = self.show_real_checkbox.isChecked()
+        def toggleReal():
+            self.board_manager.showing_real = not self.board_manager.showing_real
             self.board_manager.refresh_piece_items()
-        self.show_real_checkbox.stateChanged.connect(showRealOnCheckBoxChange)
+            if self.board_manager.showing_real:
+                self.toggle_real.setText("Hide Real Game")
+            else:
+                self.toggle_real.setText("Show Real Game")
+
+        self.toggle_real.clicked.connect(toggleReal)
 
         self.board_manager.turn_changed_signal.connect(lambda color: self.setTurnView(color))
+
+        four_in_a_row_text = self.four_in_a_row_warning.text()
+        self.four_in_a_row_warning.setText("")
+
+        self.board_manager.four_in_a_row_signal.connect(
+            lambda four_in_a_row: self.four_in_a_row_warning.setText(
+                four_in_a_row_text if four_in_a_row else ""
+            )
+        )
     
     def setTurnView(self, color: Color):
         if color == Color.BLACK:

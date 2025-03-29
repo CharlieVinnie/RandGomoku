@@ -77,14 +77,14 @@
        </widget>
       </item>
       <item>
-       <widget class="QCheckBox" name="show_real_checkbox">
+       <widget class="QPushButton" name="toggle_real">
         <property name="text">
-         <string>Show Real</string>
+         <string>toggleReal</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QLabel" name="label">
+       <widget class="QLabel" name="four_in_a_row_warning">
         <property name="text">
          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:16pt; color:#ed333b;&quot;&gt;Four In A Row!&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
