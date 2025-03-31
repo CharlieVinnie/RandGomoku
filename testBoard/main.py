@@ -57,35 +57,35 @@ class GameManager():
         self.fake_board[x][y] = fake_color
         self.history.append( (x, y, real_color, fake_color) )
 
-        if self.checkForWin():
+        if self.checkForWin(real_color):
             return
         
         self.current_color = otherColor(self.current_color)
 
-    def checkForWin(self):
+    def checkForWin(self, color: Color):
         # check for win as the gomoku rule
         for i in range(self.SIZE):
             for j in range(self.SIZE):
-                if self.real_board[i][j] == self.current_color:
+                if self.real_board[i][j] == color:
                     # check horizontal
                     if j < self.SIZE - 4:
-                        if self.real_board[i][j+1] == self.current_color and self.real_board[i][j+2] == self.current_color and self.real_board[i][j+3] == self.current_color and self.real_board[i][j+4] == self.current_color:
-                            self.winner = self.current_color
+                        if self.real_board[i][j+1] == color and self.real_board[i][j+2] == color and self.real_board[i][j+3] == color and self.real_board[i][j+4] == color:
+                            self.winner = color
                             return True
                     # check vertical
                     if i < self.SIZE - 4:
-                        if self.real_board[i+1][j] == self.current_color and self.real_board[i+2][j] == self.current_color and self.real_board[i+3][j] == self.current_color and self.real_board[i+4][j] == self.current_color:
-                            self.winner = self.current_color
+                        if self.real_board[i+1][j] == color and self.real_board[i+2][j] == color and self.real_board[i+3][j] == color and self.real_board[i+4][j] == color:
+                            self.winner = color
                             return True
                     # check diagonal
                     if i < self.SIZE - 4 and j < self.SIZE - 4:
-                        if self.real_board[i+1][j+1] == self.current_color and self.real_board[i+2][j+2] == self.current_color and self.real_board[i+3][j+3] == self.current_color and self.real_board[i+4][j+4] == self.current_color:
-                            self.winner = self.current_color
+                        if self.real_board[i+1][j+1] == color and self.real_board[i+2][j+2] == color and self.real_board[i+3][j+3] == color and self.real_board[i+4][j+4] == color:
+                            self.winner = color
                             return True
                     # check anti-diagonal
                     if i > 3 and j < self.SIZE - 4:
-                        if self.real_board[i-1][j+1] == self.current_color and self.real_board[i-2][j+2] == self.current_color and self.real_board[i-3][j+3] == self.current_color and self.real_board[i-4][j+4] == self.current_color:
-                            self.winner = self.current_color
+                        if self.real_board[i-1][j+1] == color and self.real_board[i-2][j+2] == color and self.real_board[i-3][j+3] == color and self.real_board[i-4][j+4] == color:
+                            self.winner = color
                             return True
         return False
     
