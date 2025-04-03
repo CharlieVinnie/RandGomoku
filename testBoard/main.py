@@ -176,9 +176,6 @@ class BoardManager(QObject):
     
     def disactivate(self):
         self.activated = False
-    
-    def setFlipProb(self, prob: float):
-        self.game.flip_prob = prob
 
     def getCoords(self, pos: QtCore.QPoint):
         spos = self.view.mapToScene(pos)
@@ -326,7 +323,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.toggle_real.setText("Show Real Game")
 
         flip_prob_percent = dialog.getData()["flip_prob_percent"]
-        self.board_manager.setFlipProb(flip_prob_percent/100)
+        self.board_manager.game.flip_prob = flip_prob_percent/100
     
     def resignGame(self):
 
