@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import(
     QGraphicsItem, QGraphicsItemGroup
 )
 from PyQt6.QtCore import QRectF, QRect, pyqtSignal, QObject
-from PyQt6.QtGui import QColor
+from PyQt6.QtGui import QColor, QPen, QBrush
 from enum import Enum
 import typing
 import random
@@ -186,24 +186,37 @@ class BoardManager(QObject):
         y = round(spos.y() / self.LEN-0.5)
         return x, y
 
-    def createPieceItem(self, x:int, y:int, color: Color):
-        circle = QtWidgets.QGraphicsEllipseItem(x*self.LEN, y*self.LEN, self.LEN, self.LEN)
+    def createPieceItem(self, x:int, y:int, color: Color, last_move: bool = False):
+        circle = QGraphicsEllipseItem(x*self.LEN, y*self.LEN, self.LEN, self.LEN)
         if color == Color.BLACK:
-            circle.setPen(QtGui.QPen(QtGui.QColor(0,0,0), 1))
-            circle.setBrush(QtGui.QBrush(QtGui.QColor(0,0,0)))
+            circle.setPen(QPen(QtGui.QColor(0,0,0), 1))
+            circle.setBrush(QBrush(QtGui.QColor(0,0,0)))
         else:
-            circle.setPen(QtGui.QPen(QtGui.QColor(255,255,255), 1))
-            circle.setBrush(QtGui.QBrush(QtGui.QColor(255,255,255)))
+            circle.setPen(QPen(QtGui.QColor(255,255,255), 1))
+            circle.setBrush(QBrush(QtGui.QColor(255,255,255)))
         
-        return typing.cast(QGraphicsItem, circle)
+        piece = QGraphicsItemGroup()
+        piece.addToGroup(circle)
+
+        if last_move:
+            rad = self.LEN/5
+            dot = QGraphicsEllipseItem(x*self.LEN+self.LEN/2-rad, y*self.LEN+self.LEN/2-rad, rad*2, rad*2)
+            dot.setPen(QPen(QColor(0,0,255), 1))
+            dot.setBrush(QBrush(QColor(0,0,255)))
+            piece.addToGroup(dot)
+        
+        return typing.cast(QGraphicsItem, piece)
 
     def refresh_piece_items(self):
         self.scene.removeItem(self.piece_items)
         self.piece_items = QGraphicsItemGroup()
 
         history = self.game.getRealHistory() if self.showing_real else self.game.getFakeHistory()
-        for x,y,color in history:
+        for x,y,color in history[:-1]:
             self.piece_items.addToGroup(self.createPieceItem(x,y,color))
+        
+        x,y,color = history[-1]
+        self.piece_items.addToGroup(self.createPieceItem(x,y,color,last_move=True))
 
         self.scene.addItem(self.piece_items)
 
