@@ -233,6 +233,17 @@ class StartDialog(QtWidgets.QDialog, Ui_Dialog):
         super().__init__()
         self.setupUi(self)
 
+        self.setFlipProbText()
+        self.flip_prob_slider.valueChanged.connect(self.setFlipProbText)
+
+        self.accepted.connect(self.accept)
+    
+    def setFlipProbText(self):
+        self.flip_prob_text.setText(f"Flip probability: {self.flip_prob_slider.value()}%")
+    
+    def getData(self):
+        return {"flip_prob": self.flip_prob_slider.value()}
+
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     TURN_CIRCLE_SIZE = 50
@@ -296,6 +307,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             circle.setBrush(QtGui.QBrush(QtGui.QColor(255, 255, 255)))  # Set the color to white
             self.turnView.setScene(QtWidgets.QGraphicsScene())  # Ensure the scene is initialized
             self.turnView.scene().addItem(circle)
+    
+    def startDialog(self):
+        dialog = StartDialog()
+        if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+            return dialog.getData()
 
 
 app = QtWidgets.QApplication(sys.argv)
