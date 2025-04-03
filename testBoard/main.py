@@ -176,6 +176,9 @@ class BoardManager(QObject):
     
     def disactivate(self):
         self.activated = False
+    
+    def setFlipProb(self, prob: float):
+        self.game.flip_prob = prob
 
     def getCoords(self, pos: QtCore.QPoint):
         spos = self.view.mapToScene(pos)
@@ -235,14 +238,12 @@ class StartDialog(QtWidgets.QDialog, Ui_Dialog):
 
         self.setFlipProbText()
         self.flip_prob_slider.valueChanged.connect(self.setFlipProbText)
-
-        self.accepted.connect(self.accept)
     
     def setFlipProbText(self):
         self.flip_prob_text.setText(f"Flip probability: {self.flip_prob_slider.value()}%")
     
     def getData(self):
-        return {"flip_prob": self.flip_prob_slider.value()}
+        return {"flip_prob_percent": self.flip_prob_slider.value()}
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
@@ -256,19 +257,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.resign_button.setDisabled(True)
         
-        self.start_button.clicked.connect(self.board_manager.activate)
-        self.start_button.clicked.connect(lambda: self.game_status.setText("Game ongoing..."))
-        self.start_button.clicked.connect(lambda: self.board_manager.clear())
-        self.start_button.clicked.connect(lambda: self.resign_button.setEnabled(True))
-        self.start_button.clicked.connect(lambda: self.start_button.setDisabled(True))
-        self.start_button.clicked.connect(lambda: self.board_manager.turn_changed_signal.emit(self.board_manager.game.current_color))
-        self.start_button.clicked.connect(lambda: self.toggle_real.setText("Show Real Game"))
+        self.start_button.clicked.connect(self.startGame)
+        self.resign_button.clicked.connect(self.resignGame)
         
-        self.resign_button.clicked.connect(self.board_manager.disactivate)
-        self.resign_button.clicked.connect(lambda: self.resign_button.setDisabled(True))
-        self.resign_button.clicked.connect(lambda: self.start_button.setEnabled(True))
-        self.resign_button.clicked.connect(lambda: self.game_status.setText("Game ended. Resigned."))
-
         self.board_manager.game_ended_signal.connect(
             lambda winner: self.game_status.setText(f"Game ended. Winner: {"Black" if winner == Color.BLACK else "White"}"))
         
@@ -308,10 +299,30 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.turnView.setScene(QtWidgets.QGraphicsScene())  # Ensure the scene is initialized
             self.turnView.scene().addItem(circle)
     
-    def startDialog(self):
+    def startGame(self):
         dialog = StartDialog()
-        if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
-            return dialog.getData()
+        if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+            return
+
+        self.board_manager.activate()
+        self.game_status.setText("Game ongoing...")
+        self.board_manager.clear()
+        self.resign_button.setEnabled(True)
+        self.start_button.setDisabled(True)
+        self.board_manager.turn_changed_signal.emit(self.board_manager.game.current_color)
+        self.toggle_real.setText("Show Real Game")
+
+        flip_prob_percent = dialog.getData()["flip_prob_percent"]
+        self.board_manager.setFlipProb(flip_prob_percent/100)
+    
+    def resignGame(self):
+
+        self.board_manager.disactivate()
+        self.resign_button.setDisabled(True)
+        self.start_button.setEnabled(True)
+        self.game_status.setText("Game ended. Resigned.")
+
+
 
 
 app = QtWidgets.QApplication(sys.argv)
