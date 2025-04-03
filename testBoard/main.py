@@ -73,12 +73,12 @@ class GameManager(QObject):
         self.history.append( (x, y, real_color, fake_color) )
         self.history_pointer += 1
 
+        self.emitPointerSignals()
+
         if self.checkForWin(real_color):
             return
         
         self.current_color = otherColor(self.current_color)
-
-        self.emitPointerSignals()
 
     def prevMove(self):
         if self.history_pointer == 0:
