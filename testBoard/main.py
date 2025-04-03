@@ -31,6 +31,7 @@ class GameManager():
 
     def __init__(self):
         self.history: list[tuple[int,int,Color,Color]] = []
+        self.history_pointer = 0
         self.current_color = Color.BLACK
         self.real_board: list[list[None|Color]] = [[None]*self.SIZE for _ in range(self.SIZE)]
         self.fake_board: list[list[None|Color]] = [[None]*self.SIZE for _ in range(self.SIZE)]
@@ -100,13 +101,6 @@ class GameManager():
                             return True
         return False
 
-    def clear(self):
-        self.history = []
-        self.current_color = Color.BLACK
-        self.fake_board = [[None]*self.SIZE for _ in range(self.SIZE)]
-        self.real_board = [[None]*self.SIZE for _ in range(self.SIZE)]
-        self.winner = None
-
     def getFakeHistory(self):
         return [(x,y,col) for x,y,_,col in self.history]
     
@@ -146,7 +140,7 @@ class BoardManager(QObject):
 
     def clear(self):
         self.scene.removeItem(self.piece_items)
-        self.game.clear()
+        self.game = GameManager()
         self.piece_items = QGraphicsItemGroup()
         self.scene.addItem(self.piece_items)
         self.showing_real = False
