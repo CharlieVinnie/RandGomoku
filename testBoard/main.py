@@ -26,10 +26,14 @@ def otherColor(color: Color):
 class DuplicatePositionError(Exception): pass
 class GameAlreadyEndedError(Exception): pass
 
-class GameManager():
+class GameManager(QObject):
     SIZE = 15
 
+    board_changed_signal = pyqtSignal()
+
     def __init__(self):
+        super().__init__()
+
         self.history: list[tuple[int,int,Color,Color]] = []
         self.history_pointer = 0
         self.current_color = Color.BLACK
@@ -56,12 +60,27 @@ class GameManager():
 
         self.real_board[x][y] = real_color
         self.fake_board[x][y] = fake_color
+
+        self.history = self.history[:self.history_pointer]
         self.history.append( (x, y, real_color, fake_color) )
+        self.history_pointer += 1
 
         if self.checkForWin(real_color):
             return
         
         self.current_color = otherColor(self.current_color)
+
+        self.board_changed_signal.emit()
+
+    def prevMove(self):
+        if self.history_pointer == 0:
+            raise IndexError
+        self.history_pointer -= 1
+    
+    def nextMove(self):
+        if self.history_pointer == len(self.history):
+            raise IndexError
+        self.history_pointer += 1
 
     def checkForWin(self, color: Color):
         # check for win as the gomoku rule
@@ -130,6 +149,7 @@ class BoardManager(QObject):
         self.scene.addItem(self.piece_items)
 
         self.game = GameManager()
+        self.game.board_changed_signal.connect(self.refresh_piece_items)
         self.activated = False
 
         self.showing_real = False
@@ -141,6 +161,7 @@ class BoardManager(QObject):
     def clear(self):
         self.scene.removeItem(self.piece_items)
         self.game = GameManager()
+        self.game.board_changed_signal.connect(self.refresh_piece_items)
         self.piece_items = QGraphicsItemGroup()
         self.scene.addItem(self.piece_items)
         self.showing_real = False
@@ -221,7 +242,6 @@ class BoardManager(QObject):
 
         try:
             self.game.play(x,y)
-            self.refresh_piece_items()
             self.turn_changed_signal.emit(self.game.current_color)
 
             self.four_in_a_row_signal.emit(False)
@@ -263,6 +283,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         
         self.start_button.clicked.connect(self.startGame)
         self.resign_button.clicked.connect(self.resignGame)
+
+        self.undo_button.clicked.connect(self.undoMove)
+        self.redo_button.clicked.connect(self.redoMove)
+
+
         
         self.board_manager.game_ended_signal.connect(
             lambda winner: self.game_status.setText(f"Game ended. Winner: {"Black" if winner == Color.BLACK else "White"}"))
@@ -325,6 +350,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.resign_button.setDisabled(True)
         self.start_button.setEnabled(True)
         self.game_status.setText("Game ended. Resigned.")
+    
+    def undoMove(self):
+        pass
+
+    def redoMove(self):
+        pass
 
 
 

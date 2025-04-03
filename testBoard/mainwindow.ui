@@ -14,7 +14,7 @@
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QHBoxLayout" name="horizontalLayout">
+   <layout class="QHBoxLayout" name="horizontalLayout_2">
     <item>
      <widget class="QGraphicsView" name="chess_board">
       <property name="styleSheet">
@@ -75,6 +75,24 @@
          <string/>
         </property>
        </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <item>
+         <widget class="QPushButton" name="undo_button">
+          <property name="text">
+           <string>Undo</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="redo_button">
+          <property name="text">
+           <string>Redo</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </item>
       <item>
        <widget class="QPushButton" name="toggle_real">
