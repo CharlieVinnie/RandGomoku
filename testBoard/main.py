@@ -30,6 +30,8 @@ class GameManager(QObject):
     SIZE = 15
 
     board_changed_signal = pyqtSignal()
+    pointer_is_first_move_signal = pyqtSignal(bool)
+    pointer_is_last_move_signal = pyqtSignal(bool)
 
     def __init__(self):
         super().__init__()
@@ -41,7 +43,13 @@ class GameManager(QObject):
         self.fake_board: list[list[None|Color]] = [[None]*self.SIZE for _ in range(self.SIZE)]
         self.winner: None|Color = None
         self.flip_prob = 0.2
+        self.emitPointerSignals()
     
+    def emitPointerSignals(self):
+        self.board_changed_signal.emit()
+        self.pointer_is_first_move_signal.emit(self.history_pointer == 0)
+        self.pointer_is_last_move_signal.emit(self.history_pointer == len(self.history))
+
     def play(self, x:int, y:int):
         if self.winner:
             raise GameAlreadyEndedError
@@ -70,17 +78,19 @@ class GameManager(QObject):
         
         self.current_color = otherColor(self.current_color)
 
-        self.board_changed_signal.emit()
+        self.emitPointerSignals()
 
     def prevMove(self):
         if self.history_pointer == 0:
-            raise IndexError
+            raise IndexError("history_pointer underflow")
         self.history_pointer -= 1
+        self.emitPointerSignals()
     
     def nextMove(self):
         if self.history_pointer == len(self.history):
-            raise IndexError
+            raise IndexError("history_pointer overflow")
         self.history_pointer += 1
+        self.emitPointerSignals()
 
     def checkForWin(self, color: Color):
         # check for win as the gomoku rule
@@ -121,10 +131,10 @@ class GameManager(QObject):
         return False
 
     def getFakeHistory(self):
-        return [(x,y,col) for x,y,_,col in self.history]
+        return [(x,y,col) for x,y,_,col in self.history[:self.history_pointer]]
     
     def getRealHistory(self):
-        return [(x,y,col) for x,y,col,_ in self.history]
+        return [(x,y,col) for x,y,col,_ in self.history[:self.history_pointer]]
 
 class BoardManager(QObject):
 
@@ -224,11 +234,13 @@ class BoardManager(QObject):
         self.piece_items = QGraphicsItemGroup()
 
         history = self.game.getRealHistory() if self.showing_real else self.game.getFakeHistory()
-        for x,y,color in history[:-1]:
-            self.piece_items.addToGroup(self.createPieceItem(x,y,color))
-        
-        x,y,color = history[-1]
-        self.piece_items.addToGroup(self.createPieceItem(x,y,color,last_move=True))
+
+        if len(history) != 0:
+            for x,y,color in history[:-1]:
+                self.piece_items.addToGroup(self.createPieceItem(x,y,color))
+            
+            x,y,color = history[-1]
+            self.piece_items.addToGroup(self.createPieceItem(x,y,color,last_move=True))
 
         self.scene.addItem(self.piece_items)
 
@@ -287,6 +299,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.undo_button.clicked.connect(self.undoMove)
         self.redo_button.clicked.connect(self.redoMove)
 
+        self.undo_button.setDisabled(True)
+        self.redo_button.setDisabled(True)
 
         
         self.board_manager.game_ended_signal.connect(
@@ -343,6 +357,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         flip_prob_percent = dialog.getData()["flip_prob_percent"]
         self.board_manager.game.flip_prob = flip_prob_percent/100
+
+        self.board_manager.game.pointer_is_first_move_signal.connect(lambda Is: self.undo_button.setDisabled(Is))
+        self.board_manager.game.pointer_is_last_move_signal.connect(lambda Is: self.redo_button.setDisabled(Is))
     
     def resignGame(self):
 
@@ -352,10 +369,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.game_status.setText("Game ended. Resigned.")
     
     def undoMove(self):
-        pass
+        self.board_manager.game.prevMove()
 
     def redoMove(self):
-        pass
+        self.board_manager.game.nextMove()
 
 
 
