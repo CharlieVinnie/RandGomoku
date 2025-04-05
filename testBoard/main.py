@@ -32,6 +32,7 @@ class GameManager(QObject):
     board_changed_signal = pyqtSignal()
     pointer_is_first_move_signal = pyqtSignal(bool)
     pointer_is_last_move_signal = pyqtSignal(bool)
+    four_in_a_row_signal = pyqtSignal(bool)
 
     def __init__(self):
         super().__init__()
@@ -43,12 +44,13 @@ class GameManager(QObject):
         self.fake_board: list[list[None|Color]] = [[None]*self.SIZE for _ in range(self.SIZE)]
         self.winner: None|Color = None
         self.flip_prob = 0.2
-        self.emitPointerSignals()
+        self.emitBoardChangedSignals()
     
-    def emitPointerSignals(self):
+    def emitBoardChangedSignals(self):
         self.board_changed_signal.emit()
         self.pointer_is_first_move_signal.emit(self.history_pointer == 0)
         self.pointer_is_last_move_signal.emit(self.history_pointer == len(self.history))
+        self.four_in_a_row_signal.emit(self.checkForFourInARow())
 
     def play(self, x:int, y:int):
         if self.winner:
@@ -73,24 +75,40 @@ class GameManager(QObject):
         self.history.append( (x, y, real_color, fake_color) )
         self.history_pointer += 1
 
-        self.emitPointerSignals()
+        self.emitBoardChangedSignals()
 
         if self.checkForWin(real_color):
             return
         
         self.current_color = otherColor(self.current_color)
+        self.emitBoardChangedSignals()
+        
 
     def prevMove(self):
         if self.history_pointer == 0:
             raise IndexError("history_pointer underflow")
+        
+        x,y,_,_ = self.history[self.history_pointer-1]
+
+        self.real_board[x][y] = None
+        self.fake_board[x][y] = None
+        self.current_color = otherColor(self.current_color)
+
         self.history_pointer -= 1
-        self.emitPointerSignals()
+        self.emitBoardChangedSignals()
     
     def nextMove(self):
         if self.history_pointer == len(self.history):
             raise IndexError("history_pointer overflow")
+        
+        x,y,real_color,fake_color = self.history[self.history_pointer]
+
+        self.real_board[x][y] = real_color
+        self.fake_board[x][y] = fake_color
+        self.current_color = otherColor(self.current_color)
+
         self.history_pointer += 1
-        self.emitPointerSignals()
+        self.emitBoardChangedSignals()
 
     def checkForWin(self, color: Color):
         # check for win as the gomoku rule
@@ -139,8 +157,6 @@ class GameManager(QObject):
 class BoardManager(QObject):
 
     game_ended_signal = pyqtSignal(Color)
-    turn_changed_signal = pyqtSignal(Color)
-    four_in_a_row_signal = pyqtSignal(bool)
 
     BOARDSIZE = 15
     LEN = 30
@@ -175,7 +191,6 @@ class BoardManager(QObject):
         self.piece_items = QGraphicsItemGroup()
         self.scene.addItem(self.piece_items)
         self.showing_real = False
-        self.four_in_a_row_signal.emit(False)
 
     def drawBoardLines(self):
         for i in range(self.BOARDSIZE):
@@ -255,15 +270,10 @@ class BoardManager(QObject):
 
         try:
             self.game.play(x,y)
-            self.turn_changed_signal.emit(self.game.current_color)
-
-            self.four_in_a_row_signal.emit(False)
 
             if self.game.winner:
                 self.disactivate()
                 self.game_ended_signal.emit(self.game.winner)
-            elif self.game.checkForFourInARow():
-                self.four_in_a_row_signal.emit(True)
 
         except DuplicatePositionError:
             pass
@@ -305,10 +315,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         
         self.board_manager.game_ended_signal.connect(
-            lambda winner: self.game_status.setText(f"Game ended. Winner: {"Black" if winner == Color.BLACK else "White"}"))
+            lambda winner: self.game_status.setText(f"Game ended.\nWinner: {"Black" if winner == Color.BLACK else "White"}"))
         
         self.board_manager.game_ended_signal.connect(lambda: self.start_button.setEnabled(True))
         self.board_manager.game_ended_signal.connect(lambda: self.resign_button.setDisabled(True))
+        self.board_manager.game_ended_signal.connect(lambda: self.undo_button.setDisabled(True))
+        self.board_manager.game_ended_signal.connect(lambda: self.redo_button.setDisabled(True))
 
         def toggleReal():
             self.board_manager.showing_real = not self.board_manager.showing_real
@@ -320,16 +332,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.toggle_real.clicked.connect(toggleReal)
 
-        self.board_manager.turn_changed_signal.connect(lambda color: self.setTurnView(color))
-
-        four_in_a_row_text = self.four_in_a_row_warning.text()
+        self.four_in_a_row_text = self.four_in_a_row_warning.text()
         self.four_in_a_row_warning.setText("")
 
-        self.board_manager.four_in_a_row_signal.connect(
-            lambda four_in_a_row: self.four_in_a_row_warning.setText(
-                four_in_a_row_text if four_in_a_row else ""
-            )
-        )
     
     def setTurnView(self, color: Color):
         if color == Color.BLACK:
@@ -353,7 +358,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.board_manager.clear()
         self.resign_button.setEnabled(True)
         self.start_button.setDisabled(True)
-        self.board_manager.turn_changed_signal.emit(self.board_manager.game.current_color)
         self.toggle_real.setText("Show Real Game")
 
         flip_prob_percent = dialog.getData()["flip_prob_percent"]
@@ -361,6 +365,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.board_manager.game.pointer_is_first_move_signal.connect(lambda Is: self.undo_button.setDisabled(Is))
         self.board_manager.game.pointer_is_last_move_signal.connect(lambda Is: self.redo_button.setDisabled(Is))
+
+        self.board_manager.game.four_in_a_row_signal.connect(
+            lambda four_in_a_row: self.four_in_a_row_warning.setText(
+                self.four_in_a_row_text if four_in_a_row else ""
+            )
+        )
+
+        self.setTurnView(Color.BLACK)
+        self.board_manager.game.board_changed_signal.connect(lambda: self.setTurnView(self.board_manager.game.current_color))
     
     def resignGame(self):
 
@@ -368,6 +381,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.resign_button.setDisabled(True)
         self.start_button.setEnabled(True)
         self.game_status.setText("Game ended. Resigned.")
+        self.four_in_a_row_warning.setText("")
     
     def undoMove(self):
         self.board_manager.game.prevMove()

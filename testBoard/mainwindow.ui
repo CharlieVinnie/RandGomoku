@@ -71,8 +71,17 @@
       </item>
       <item>
        <widget class="QLabel" name="game_status">
+        <property name="maximumSize">
+         <size>
+          <width>168</width>
+          <height>79</height>
+         </size>
+        </property>
         <property name="text">
          <string/>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignmentFlag::AlignCenter</set>
         </property>
        </widget>
       </item>
@@ -105,6 +114,9 @@
        <widget class="QLabel" name="four_in_a_row_warning">
         <property name="text">
          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:16pt; color:#ed333b;&quot;&gt;Four In A Row!&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignmentFlag::AlignCenter</set>
         </property>
        </widget>
       </item>
