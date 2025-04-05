@@ -230,19 +230,25 @@ class BoardManager(QObject):
         return x, y
 
     def createPieceItem(self, x:int, y:int, color: Color, last_move: bool = False):
-        circle = QGraphicsEllipseItem(x*self.LEN, y*self.LEN, self.LEN, self.LEN)
+        circle = QGraphicsEllipseItem(x*self.LEN+1, y*self.LEN+1, self.LEN-2, self.LEN-2)
         if color == Color.BLACK:
-            circle.setPen(QPen(QtGui.QColor(0,0,0), 1))
-            circle.setBrush(QBrush(QtGui.QColor(0,0,0)))
+            circle.setPen(QPen(QtGui.QColor(0,0,0,0), 0))
+            gradient = QtGui.QRadialGradient(QtCore.QPointF(x*self.LEN+1, y*self.LEN+1), self.LEN)
+            gradient.setColorAt(0, QColor(255, 255, 255))
+            gradient.setColorAt(1, QColor(0, 0, 0))
+            circle.setBrush(QBrush(gradient))
         else:
-            circle.setPen(QPen(QtGui.QColor(255,255,255), 1))
-            circle.setBrush(QBrush(QtGui.QColor(255,255,255)))
+            circle.setPen(QPen(QtGui.QColor(255,255,255,0), 0))
+            gradient = QtGui.QRadialGradient(QtCore.QPointF(x*self.LEN+self.LEN, y*self.LEN+self.LEN), self.LEN)
+            gradient.setColorAt(1, QColor(255, 255, 255))
+            gradient.setColorAt(0, QColor(0, 0, 0))
+            circle.setBrush(QBrush(gradient))
         
         piece = QGraphicsItemGroup()
         piece.addToGroup(circle)
 
         if last_move:
-            rad = self.LEN/5
+            rad = self.LEN/6
             dot = QGraphicsEllipseItem(x*self.LEN+self.LEN/2-rad, y*self.LEN+self.LEN/2-rad, rad*2, rad*2)
             dot_color = QColor(255,255,255) if color == Color.BLACK else QColor(0,0,255)
             dot.setPen(QPen(dot_color, 1))
