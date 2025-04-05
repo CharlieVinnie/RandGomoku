@@ -32,7 +32,7 @@ class Ui_Dialog(object):
         self.verticalLayout.addWidget(self.flip_prob_text)
         self.flip_prob_slider = QtWidgets.QSlider(parent=self.widget)
         self.flip_prob_slider.setMaximum(100)
-        self.flip_prob_slider.setProperty("value", 20)
+        self.flip_prob_slider.setProperty("value", 10)
         self.flip_prob_slider.setOrientation(QtCore.Qt.Orientation.Horizontal)
         self.flip_prob_slider.setObjectName("flip_prob_slider")
         self.verticalLayout.addWidget(self.flip_prob_slider)

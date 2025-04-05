@@ -43,14 +43,14 @@ class GameManager(QObject):
         self.real_board: list[list[None|Color]] = [[None]*self.SIZE for _ in range(self.SIZE)]
         self.fake_board: list[list[None|Color]] = [[None]*self.SIZE for _ in range(self.SIZE)]
         self.winner: None|Color = None
-        self.flip_prob = 0.2
+        self.flip_prob = 0.1
         self.emitBoardChangedSignals()
     
     def emitBoardChangedSignals(self):
         self.board_changed_signal.emit()
         self.pointer_is_first_move_signal.emit(self.history_pointer == 0)
         self.pointer_is_last_move_signal.emit(self.history_pointer == len(self.history))
-        self.four_in_a_row_signal.emit(self.checkForFourInARow())
+        self.four_in_a_row_signal.emit(not (self.winner and self.history_pointer == len(self.history) ) and self.checkForFourInARow())
 
     def play(self, x:int, y:int):
         if self.winner:
