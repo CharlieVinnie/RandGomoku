@@ -223,8 +223,9 @@ class BoardManager(QObject):
         if last_move:
             rad = self.LEN/5
             dot = QGraphicsEllipseItem(x*self.LEN+self.LEN/2-rad, y*self.LEN+self.LEN/2-rad, rad*2, rad*2)
-            dot.setPen(QPen(QColor(0,0,255), 1))
-            dot.setBrush(QBrush(QColor(0,0,255)))
+            dot_color = QColor(255,255,255) if color == Color.BLACK else QColor(0,0,255)
+            dot.setPen(QPen(dot_color, 1))
+            dot.setBrush(QBrush(dot_color))
             piece.addToGroup(dot)
         
         return typing.cast(QGraphicsItem, piece)
