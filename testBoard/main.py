@@ -110,6 +110,12 @@ class GameManager(QObject):
         self.history_pointer += 1
         self.emitBoardChangedSignals()
 
+    def gotoMove(self, move: int):
+        while self.history_pointer > move:
+            self.prevMove()
+        while self.history_pointer < move:
+            self.nextMove()
+
     def checkForWin(self, color: Color):
         # check for win as the gomoku rule
         for i in range(self.SIZE):
@@ -310,6 +316,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.undo_button.clicked.connect(self.undoMove)
         self.redo_button.clicked.connect(self.redoMove)
 
+        self.move_slider.valueChanged.connect(self.gotoMove)
+
         self.undo_button.setDisabled(True)
         self.redo_button.setDisabled(True)
 
@@ -319,8 +327,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         
         self.board_manager.game_ended_signal.connect(lambda: self.start_button.setEnabled(True))
         self.board_manager.game_ended_signal.connect(lambda: self.resign_button.setDisabled(True))
-        self.board_manager.game_ended_signal.connect(lambda: self.undo_button.setDisabled(True))
-        self.board_manager.game_ended_signal.connect(lambda: self.redo_button.setDisabled(True))
+        self.board_manager.game_ended_signal.connect(lambda: self.undo_button.setText("Prev"))
+        self.board_manager.game_ended_signal.connect(lambda: self.redo_button.setText("Next"))
+        self.board_manager.game_ended_signal.connect(lambda: self.four_in_a_row_warning.setText(""))
 
         def toggleReal():
             self.board_manager.showing_real = not self.board_manager.showing_real
@@ -359,6 +368,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.resign_button.setEnabled(True)
         self.start_button.setDisabled(True)
         self.toggle_real.setText("Show Real Game")
+        self.undo_button.setText("Undo")
+        self.redo_button.setText("Redo")
 
         flip_prob_percent = dialog.getData()["flip_prob_percent"]
         self.board_manager.game.flip_prob = flip_prob_percent/100
@@ -374,6 +385,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.setTurnView(Color.BLACK)
         self.board_manager.game.board_changed_signal.connect(lambda: self.setTurnView(self.board_manager.game.current_color))
+        self.board_manager.game.board_changed_signal.connect(self.updateMoveSlider)
+        self.move_slider.setDisabled(True)
+
     
     def resignGame(self):
 
@@ -382,13 +396,28 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.start_button.setEnabled(True)
         self.game_status.setText("Game ended. Resigned.")
         self.four_in_a_row_warning.setText("")
+        self.undo_button.setText("Prev")
+        self.redo_button.setText("Next")
     
     def undoMove(self):
         self.board_manager.game.prevMove()
 
     def redoMove(self):
         self.board_manager.game.nextMove()
+    
+    def gotoMove(self, position: int):
+        self.board_manager.game.gotoMove(position)
 
+    def updateMoveSlider(self):
+        if len(self.board_manager.game.history) == 0:
+            self.move_slider.setDisabled(True)
+            return
+        
+        self.move_slider.setEnabled(True)
+        self.move_slider.setMinimum(0)
+        self.move_slider.setMaximum(len(self.board_manager.game.history))
+        self.move_slider.setValue(self.board_manager.game.history_pointer)
+        self.move_label.setText(f"Move: {self.board_manager.game.history_pointer}")
 
 
 
