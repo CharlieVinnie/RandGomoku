@@ -323,6 +323,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.redo_button.clicked.connect(self.redoMove)
 
         self.move_slider.valueChanged.connect(self.gotoMove)
+        self.move_slider.setDisabled(True)
 
         self.undo_button.setDisabled(True)
         self.redo_button.setDisabled(True)
@@ -376,6 +377,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.toggle_real.setText("Show Real Game")
         self.undo_button.setText("Undo")
         self.redo_button.setText("Redo")
+        self.move_slider.setEnabled(True)
 
         flip_prob_percent = dialog.getData()["flip_prob_percent"]
         self.board_manager.game.flip_prob = flip_prob_percent/100
