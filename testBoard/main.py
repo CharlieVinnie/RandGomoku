@@ -26,6 +26,23 @@ def otherColor(color: Color):
 class DuplicatePositionError(Exception): pass
 class GameAlreadyEndedError(Exception): pass
 
+def drawPiece(x: float, y:float, size:float, color: Color):
+    circle = QGraphicsEllipseItem(x,y,size,size)
+    if color == Color.BLACK:
+        circle.setPen(QPen(QtGui.QColor(0,0,0,0), 0))
+        gradient = QtGui.QRadialGradient(QtCore.QPointF(x,y), size)
+        gradient.setColorAt(0, QColor(255, 255, 255))
+        gradient.setColorAt(1, QColor(0, 0, 0))
+        circle.setBrush(QBrush(gradient))
+    else:
+        circle.setPen(QPen(QtGui.QColor(150,150,150,0), 0))
+        gradient = QtGui.QRadialGradient(QtCore.QPointF(x,y), size)
+        gradient.setColorAt(0, QColor(255, 255, 255))
+        gradient.setColorAt(1, QColor(150, 150, 150))
+        circle.setBrush(QBrush(gradient))
+    
+    return circle
+
 class GameManager(QObject):
     SIZE = 15
 
@@ -230,20 +247,8 @@ class BoardManager(QObject):
         return x, y
 
     def createPieceItem(self, x:int, y:int, color: Color, last_move: bool = False):
-        circle = QGraphicsEllipseItem(x*self.LEN+1, y*self.LEN+1, self.LEN-2, self.LEN-2)
-        if color == Color.BLACK:
-            circle.setPen(QPen(QtGui.QColor(0,0,0,0), 0))
-            gradient = QtGui.QRadialGradient(QtCore.QPointF(x*self.LEN+1, y*self.LEN+1), self.LEN)
-            gradient.setColorAt(0, QColor(255, 255, 255))
-            gradient.setColorAt(1, QColor(0, 0, 0))
-            circle.setBrush(QBrush(gradient))
-        else:
-            circle.setPen(QPen(QtGui.QColor(255,255,255,0), 0))
-            gradient = QtGui.QRadialGradient(QtCore.QPointF(x*self.LEN+self.LEN, y*self.LEN+self.LEN), self.LEN)
-            gradient.setColorAt(1, QColor(255, 255, 255))
-            gradient.setColorAt(0, QColor(0, 0, 0))
-            circle.setBrush(QBrush(gradient))
-        
+        circle = drawPiece(x*self.LEN+1, y*self.LEN+1, self.LEN-2, color)
+
         piece = QGraphicsItemGroup()
         piece.addToGroup(circle)
 
@@ -353,16 +358,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     
     def setTurnView(self, color: Color):
-        if color == Color.BLACK:
-            circle = QtWidgets.QGraphicsEllipseItem(0, 0, self.TURN_CIRCLE_SIZE, self.TURN_CIRCLE_SIZE)  # Example coordinates and size
-            circle.setBrush(QtGui.QBrush(QtGui.QColor(0, 0, 0)))  # Set the color to black
-            self.turnView.setScene(QtWidgets.QGraphicsScene())  # Ensure the scene is initialized
-            self.turnView.scene().addItem(circle)
-        else:
-            circle = QtWidgets.QGraphicsEllipseItem(0, 0, self.TURN_CIRCLE_SIZE, self.TURN_CIRCLE_SIZE)  # Example coordinates and size
-            circle.setBrush(QtGui.QBrush(QtGui.QColor(255, 255, 255)))  # Set the color to white
-            self.turnView.setScene(QtWidgets.QGraphicsScene())  # Ensure the scene is initialized
-            self.turnView.scene().addItem(circle)
+        background_color = QColor(50,50,50)
+
+        scene = QGraphicsScene()
+
+        circle = drawPiece(0, 0, self.TURN_CIRCLE_SIZE, color)
+        scene.setBackgroundBrush(background_color)
+        scene.addItem(circle)
+
+        self.turnView.setScene(scene)
     
     def startGame(self):
         dialog = StartDialog()
