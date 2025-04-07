@@ -31,14 +31,14 @@ def drawPiece(x: float, y:float, size:float, color: Color):
     if color == Color.BLACK:
         circle.setPen(QPen(QtGui.QColor(0,0,0,0), 0))
         gradient = QtGui.QRadialGradient(QtCore.QPointF(x,y), size)
-        gradient.setColorAt(0, QColor(255, 255, 255))
+        gradient.setColorAt(0, QColor(150, 150, 150))
         gradient.setColorAt(1, QColor(0, 0, 0))
         circle.setBrush(QBrush(gradient))
     else:
         circle.setPen(QPen(QtGui.QColor(150,150,150,0), 0))
         gradient = QtGui.QRadialGradient(QtCore.QPointF(x,y), size)
         gradient.setColorAt(0, QColor(255, 255, 255))
-        gradient.setColorAt(1, QColor(150, 150, 150))
+        gradient.setColorAt(1, QColor(175, 175, 175))
         circle.setBrush(QBrush(gradient))
     
     return circle
@@ -63,11 +63,14 @@ class GameManager(QObject):
         self.flip_prob = 0.1
         self.emitBoardChangedSignals()
     
+    def pointerAtWin(self):
+        return self.winner is not None and self.history_pointer == len(self.history)
+
     def emitBoardChangedSignals(self):
         self.board_changed_signal.emit()
         self.pointer_is_first_move_signal.emit(self.history_pointer == 0)
         self.pointer_is_last_move_signal.emit(self.history_pointer == len(self.history))
-        self.four_in_a_row_signal.emit(not (self.winner and self.history_pointer == len(self.history) ) and self.checkForFourInARow())
+        self.four_in_a_row_signal.emit(not self.pointerAtWin() and self.checkForFourInARow())
 
     def play(self, x:int, y:int):
         if self.winner:
@@ -92,9 +95,8 @@ class GameManager(QObject):
         self.history.append( (x, y, real_color, fake_color) )
         self.history_pointer += 1
 
-        self.emitBoardChangedSignals()
-
         if self.checkForWin(real_color):
+            self.emitBoardChangedSignals()
             return
         
         self.current_color = otherColor(self.current_color)
@@ -253,8 +255,8 @@ class BoardManager(QObject):
         piece.addToGroup(circle)
 
         if last_move:
-            rad = self.LEN/6
-            dot = QGraphicsEllipseItem(x*self.LEN+self.LEN/2-rad, y*self.LEN+self.LEN/2-rad, rad*2, rad*2)
+            rad = self.LEN/10
+            dot = QtWidgets.QGraphicsRectItem(x*self.LEN+self.LEN/2-rad, y*self.LEN+self.LEN/2-rad, rad*2, rad*2)
             dot_color = QColor(255,255,255) if color == Color.BLACK else QColor(0,0,255)
             dot.setPen(QPen(dot_color, 1))
             dot.setBrush(QBrush(dot_color))
@@ -358,7 +360,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     
     def setTurnView(self, color: Color):
-        background_color = QColor(50,50,50)
+        if self.board_manager.game.pointerAtWin():
+            background_color = QColor(255,255,0)
+        else:
+            background_color = QColor(50,50,50)
 
         scene = QGraphicsScene()
 
@@ -399,6 +404,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.board_manager.game.board_changed_signal.connect(lambda: self.setTurnView(self.board_manager.game.current_color))
         self.board_manager.game.board_changed_signal.connect(self.updateMoveSlider)
         self.move_slider.setDisabled(True)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        print("resized")
 
     
     def resignGame(self):
