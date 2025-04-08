@@ -363,11 +363,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.four_in_a_row_warning.setText("")
 
     
-    def setTurnView(self, color: Color):
+    def setTurnView(self):
         if self.board_manager.game.pointerAtWin():
             background_color = QColor(255,255,0)
+            color = self.board_manager.game.winner
         else:
             background_color = QColor(50,50,50)
+            color = self.board_manager.game.current_color
 
         scene = QGraphicsScene()
 
@@ -404,8 +406,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             )
         )
 
-        self.setTurnView(Color.BLACK)
-        self.board_manager.game.board_changed_signal.connect(lambda: self.setTurnView(self.board_manager.game.current_color))
+        self.setTurnView()
+        self.board_manager.game.board_changed_signal.connect(self.setTurnView)
         self.board_manager.game.board_changed_signal.connect(self.updateMoveSlider)
         self.move_slider.setDisabled(True)
 
