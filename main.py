@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import(
     QGraphicsLineItem, QGraphicsRectItem, QGraphicsScene, QGraphicsView, QGraphicsEllipseItem, QDialog,
     QGraphicsItem, QGraphicsItemGroup
 )
-from PyQt6.QtCore import QRectF, QRect, pyqtSignal, QObject
+from PyQt6.QtCore import QRectF, QRect, pyqtSignal, QObject, Qt
 from PyQt6.QtGui import QColor, QPen, QBrush
 from enum import Enum
 import typing
@@ -220,9 +220,13 @@ class BoardManager(QObject):
     def drawBoardLines(self):
         for i in range(self.BOARDSIZE):
             line1 = QtWidgets.QGraphicsLineItem(self.LEN/2, self.LEN/2+i*self.LEN, self.LEN/2+(self.BOARDSIZE-1)*self.LEN, self.LEN/2+i*self.LEN)
-            line1.setPen(QtGui.QPen(QtGui.QColor(0,0,0), 1))
+            pen1 = QtGui.QPen(QtGui.QColor(0,0,0), 1)
+            pen1.setCosmetic(True)
+            line1.setPen(pen1)
             line2 = QtWidgets.QGraphicsLineItem(self.LEN/2+i*self.LEN, self.LEN/2, self.LEN/2+i*self.LEN, self.LEN/2+(self.BOARDSIZE-1)*self.LEN)
-            line2.setPen(QtGui.QPen(QtGui.QColor(0,0,0), 1))
+            pen2 = QtGui.QPen(QtGui.QColor(0,0,0), 1)
+            pen2.setCosmetic(True)
+            line2.setPen(pen2)
             self.scene.addItem(line1)
             self.scene.addItem(line2)
         
@@ -405,10 +409,23 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.board_manager.game.board_changed_signal.connect(self.updateMoveSlider)
         self.move_slider.setDisabled(True)
 
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        print("resized")
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        
+        if self.board_manager.scene:
+            scene_rect = self.board_manager.scene.sceneRect()
+            view_size = self.board_manager.view.size()
 
+            ratio = min( view_size.width() / scene_rect.width(), view_size.height() / scene_rect.height() ) * 0.8
+
+            self.board_manager.view.resetTransform()
+
+
+            self.board_manager.view.scale(ratio, ratio)
+            # self.board_manager.view.scale(view_size.width() / scene_rect.width(), view_size.height() / scene_rect.height())
+
+        # if self.board_manager.scene:
+        #     self.board_manager.view.fitInView(self.board_manager.scene.sceneRect(), mode=Qt.AspectRatioMode.IgnoreAspectRatio)
     
     def resignGame(self):
 
