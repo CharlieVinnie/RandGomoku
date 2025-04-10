@@ -1,11 +1,11 @@
 import sys
-from PyQt6 import QtWidgets, QtGui, QtCore
-from PyQt6.QtWidgets import(
+from PyQt5 import QtWidgets, QtGui, QtCore
+from PyQt5.QtWidgets import(
     QGraphicsLineItem, QGraphicsRectItem, QGraphicsScene, QGraphicsView, QGraphicsEllipseItem, QDialog,
     QGraphicsItem, QGraphicsItemGroup
 )
-from PyQt6.QtCore import QRectF, QRect, pyqtSignal, QObject, Qt
-from PyQt6.QtGui import QColor, QPen, QBrush
+from PyQt5.QtCore import QRectF, QRect, pyqtSignal, QObject, Qt
+from PyQt5.QtGui import QColor, QPen, QBrush
 from enum import Enum
 import typing
 import random
@@ -368,7 +368,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             background_color = QColor(255,255,0)
             color = self.board_manager.game.winner
         else:
-            background_color = QColor(50,50,50)
+            background_color = QColor(100,100,100)
             color = self.board_manager.game.current_color
 
         scene = QGraphicsScene()
